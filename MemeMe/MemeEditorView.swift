@@ -18,32 +18,24 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
     @IBOutlet weak var shareButton: UIBarButtonItem!
     // MARK: Variables
     var memedImage: UIImage?
-    struct Meme {
-        let topText:String
-        let bottomText:String
-        var originalImage:UIImage
-        var memedImage:UIImage
-    }
-    
     let memeTextAttributes: [NSAttributedString.Key: Any] = [NSAttributedString.Key.strokeColor: UIColor.black, NSAttributedString.Key.foregroundColor : UIColor.white , NSAttributedString.Key.font: UIFont(name: "HelveticaNeue-CondensedBlack", size: 40)!, NSAttributedString.Key.strokeWidth: -3.0 ]
+    enum ButtonType:Int {
+        case album = 0
+        case camera
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        topTextField.textAlignment = NSTextAlignment.center
-        topTextField.text = "TOP"
-        bottomTextField.text =  "BOTTOM"
-        bottomTextField.textAlignment = NSTextAlignment.center
         self.bottomTextField.delegate = self
         self.topTextField.delegate = self
         shareButton.isEnabled = false
-        
         // Do any additional setup after loading the view, typically from a nib.
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         cameraButton.isEnabled = UIImagePickerController.isSourceTypeAvailable(.camera)
-        topTextField.defaultTextAttributes = memeTextAttributes
-        bottomTextField.defaultTextAttributes = memeTextAttributes
+        configure(topTextField, with: "TOP")
+        configure(bottomTextField, with: "BOTTOM")
         subscribeToKeyboardNotifications()
         
     }
@@ -52,18 +44,15 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
         unsubscribeToKeyboardNotifications()
     }
     func textFieldShouldReturn(_ textField: UITextField)-> Bool{
-        topTextField.resignFirstResponder()
-        bottomTextField.resignFirstResponder()
+        textField.resignFirstResponder()
         return true
     }
     func textFieldDidBeginEditing(_ textField: UITextField){
-        if topTextField.text == "TOP" && textField == topTextField {
-            textField.text = ""
-        } else if bottomTextField.text == "BOTTOM" && textField == bottomTextField {
+        if ["TOP", "BOTTOM"].contains(textField.text) {
             textField.text = ""
         }
     }
-// to avoid nil textfield so it makes it easier for the user to find it
+    // to avoid nil textfield so it makes it easier for the user to find it
     func textFieldDidEndEditing(_ textField: UITextField){
         if topTextField.text == "" && textField == topTextField {
             textField.text = "TOP"
@@ -71,22 +60,18 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
             textField.text = "BOTTOM"
         }
     }
-    
     //    MARK: IBActions
-    @IBAction func pickAnImageFromAlbum(_ sender: Any) {
+    @IBAction func pickAnImage(_ sender: UIBarButtonItem) {
         let imagePicker = UIImagePickerController()
         imagePicker.delegate = self
-        imagePicker.sourceType = .photoLibrary
+        switch ButtonType(rawValue: sender.tag)! {
+        case .album :
+            imagePicker.sourceType = .photoLibrary
+        case .camera:
+            imagePicker.sourceType = .camera
+        }
         present(imagePicker, animated: true, completion: nil)
     }
-    
-    @IBAction func PickAnImageFromCamera(_ sender: Any) {
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.sourceType = .camera
-        present(imagePicker, animated: true, completion: nil)
-    }
-    
     @IBAction func shareMeme(_ sender: Any) {
         let memeImage = generateMemedImage()
         let controller = UIActivityViewController(activityItems: [memeImage], applicationActivities: nil)
@@ -99,25 +84,23 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
             }
             self.memedImage = self.generateMemedImage()
             self.save()
-        }
-    }
+        } }
+    // MARK: - Helper methods
     
     func save() {
         // Create the meme
         let meme = Meme(topText: topTextField.text!, bottomText: bottomTextField.text!, originalImage: imagePickedView.image!, memedImage: memedImage!)
     }
     func generateMemedImage() -> UIImage {
-        self.navigationController?.setNavigationBarHidden(true, animated: true)
-        self.topToolBar.isHidden = true
-        bootomToolBar.isHidden = true
+        configureToolBarHidden(topToolBar, isHidden: true)
+        configureToolBarHidden(bootomToolBar, isHidden: true)
         // Render view to an image
         UIGraphicsBeginImageContext(self.view.frame.size)
         view.drawHierarchy(in: self.view.frame, afterScreenUpdates: true)
         let memedImage:UIImage = UIGraphicsGetImageFromCurrentImageContext()!
         UIGraphicsEndImageContext()
-        self.navigationController?.setNavigationBarHidden(false, animated: true)
-        topToolBar.isHidden = false
-        bootomToolBar.isHidden = false
+        configureToolBarHidden(topToolBar , isHidden: false)
+        configureToolBarHidden(bootomToolBar , isHidden: false)
         return memedImage
     }
     func imagePickerController(_ picker: UIImagePickerController,
@@ -130,7 +113,17 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
             dismiss(animated: true, completion: nil)
         } else{ print("image not found!")}
     }
+    func configureToolBarHidden(_ sender: UIToolbar,isHidden:Bool) {
+        sender.isHidden = isHidden
+        self.navigationController?.setNavigationBarHidden(isHidden, animated: true)
+    }
     
+    //MARK: configure textfield
+    func configure(_ textField: UITextField, with defaultText: String) {
+        textField.text = defaultText
+          textField.textAlignment = NSTextAlignment.center
+        textField.defaultTextAttributes = memeTextAttributes
+    }
     // MARK: Move view functions
     @objc func keyboardWillShow(_ notification: Notification){
         if bottomTextField.isEditing {
