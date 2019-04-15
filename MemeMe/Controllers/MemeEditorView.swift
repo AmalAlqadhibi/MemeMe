@@ -16,28 +16,36 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
     @IBOutlet weak var bootomToolBar: UIToolbar!
     @IBOutlet weak var topToolBar: UIToolbar!
     @IBOutlet weak var shareButton: UIBarButtonItem!
+    var memeindex:Int!
+    
     // MARK: Variables
     var memedImage: UIImage?
     let memeTextAttributes: [NSAttributedString.Key: Any] = [NSAttributedString.Key.strokeColor: UIColor.black, NSAttributedString.Key.foregroundColor : UIColor.white , NSAttributedString.Key.font: UIFont(name: "HelveticaNeue-CondensedBlack", size: 40)!, NSAttributedString.Key.strokeWidth: -3.0 ]
-    enum ButtonType:Int {
-        case album = 0
-        case camera
+    var memes:[Meme]! {
+        let object = UIApplication.shared.delegate
+        let appDelegate = object as! AppDelegate
+        return appDelegate.memes
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.bottomTextField.delegate = self
-        self.topTextField.delegate = self
-        shareButton.isEnabled = false
+        cameraButton.isEnabled = UIImagePickerController.isSourceTypeAvailable(.camera)
+        shareButton.isEnabled = memeindex == nil ? false : true
+        imagePickedView.contentMode = .scaleAspectFit
+        self.imagePickedView.contentMode = .scaleAspectFit
+        if memeindex != nil {
+            configure(topTextField, with: memes[memeindex].topText)
+            configure(bottomTextField, with: memes[memeindex].bottomText)
+            imagePickedView.image = memes[memeindex].originalImage
+        } else {
+            configure(topTextField, with: "TOP")
+            configure(bottomTextField, with: "BOTTOM")
+        }
         // Do any additional setup after loading the view, typically from a nib.
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        cameraButton.isEnabled = UIImagePickerController.isSourceTypeAvailable(.camera)
-        configure(topTextField, with: "TOP")
-        configure(bottomTextField, with: "BOTTOM")
         subscribeToKeyboardNotifications()
-        
     }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
@@ -52,45 +60,53 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
             textField.text = ""
         }
     }
-    // to avoid nil textfield so it makes it easier for the user to find it
-    func textFieldDidEndEditing(_ textField: UITextField){
-        if topTextField.text == "" && textField == topTextField {
-            textField.text = "TOP"
-        } else if bottomTextField.text == "" && textField == bottomTextField {
-            textField.text = "BOTTOM"
-        }
-    }
+ 
     //    MARK: IBActions
     @IBAction func pickAnImage(_ sender: UIBarButtonItem) {
         let imagePicker = UIImagePickerController()
         imagePicker.delegate = self
-        switch ButtonType(rawValue: sender.tag)! {
-        case .album :
-            imagePicker.sourceType = .photoLibrary
-        case .camera:
-            imagePicker.sourceType = .camera
-        }
+        // to allow the user to crop the image.
+        imagePicker.allowsEditing = true
+        imagePicker.sourceType = (sender.tag == 0) ? .photoLibrary : .camera
         present(imagePicker, animated: true, completion: nil)
     }
+    
     @IBAction func shareMeme(_ sender: Any) {
-        let memeImage = generateMemedImage()
-        let controller = UIActivityViewController(activityItems: [memeImage], applicationActivities: nil)
+        memedImage = generateMemedImage()
+        let controller = UIActivityViewController(activityItems: [memedImage!], applicationActivities: nil)
         //        to avoid crash when run on an iPad.
         controller.popoverPresentationController?.sourceView = self.view
         self.present(controller, animated: true, completion: nil)
         controller.completionWithItemsHandler = {(activityType: UIActivity.ActivityType?, completed: Bool, returnedItems: [Any]?, error: Error?) in
             if !completed {
-                self.dismiss(animated: true, completion: nil)
-            }
-            self.memedImage = self.generateMemedImage()
-            self.save()
-        } }
+                // show alert, unsuccessful Recording
+                let alertController = UIAlertController(title: "Oops!", message: "Sorry, your meme could not be saved, please try again.", preferredStyle: .alert)
+                let defaultAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+                alertController.addAction(defaultAction)
+                self.present(alertController, animated: true, completion: nil)
+            } else {
+                self.save()
+                // use View Controller Presentation rather thab dismiss , so it will not dismiss to detailVC
+                let presentMemeEditorVC = self.storyboard?.instantiateViewController(withIdentifier: "TabBar") as! UITabBarController
+                self.present(presentMemeEditorVC, animated: false, completion: nil)
+            } }}
     // MARK: - Helper methods
     
-    func save() {
-        // Create the meme
-        let meme = Meme(topText: topTextField.text!, bottomText: bottomTextField.text!, originalImage: imagePickedView.image!, memedImage: memedImage!)
+    @IBAction func cancel(_ sender: Any) {
+        dismiss(animated: true, completion: nil)
     }
+    func save() {
+        if memeindex == nil{
+            // Create the meme
+            let meme = Meme(topText: topTextField.text!, bottomText: bottomTextField.text!, originalImage: imagePickedView.image!, memedImage: memedImage!)
+            (UIApplication.shared.delegate as! AppDelegate).memes.append(meme)
+        } else {
+            (UIApplication.shared.delegate as! AppDelegate).memes[memeindex].memedImage = self.memedImage ?? generateMemedImage()
+            (UIApplication.shared.delegate as! AppDelegate).memes[memeindex].topText = self.topTextField.text!
+            (UIApplication.shared.delegate as! AppDelegate).memes[memeindex].bottomText = self.bottomTextField.text!
+            
+        }}
+    
     func generateMemedImage() -> UIImage {
         configureToolBarHidden(topToolBar, isHidden: true)
         configureToolBarHidden(bootomToolBar, isHidden: true)
@@ -106,12 +122,14 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
     func imagePickerController(_ picker: UIImagePickerController,
                                didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any])
     {
-        if let image = info[UIImagePickerController.InfoKey.originalImage] as? UIImage {
-            self.imagePickedView.contentMode = .scaleAspectFit
+        // to add editedImage if threr is, or set originalImage
+        if let image = info[.editedImage] as? UIImage {
             imagePickedView.image = image
-            shareButton.isEnabled = true
-            dismiss(animated: true, completion: nil)
+        } else if let image = info[.originalImage] as? UIImage {
+            imagePickedView.image = image
         } else{ print("image not found!")}
+        shareButton.isEnabled = true
+        dismiss(animated: true, completion: nil)
     }
     func configureToolBarHidden(_ sender: UIToolbar,isHidden:Bool) {
         sender.isHidden = isHidden
@@ -121,8 +139,9 @@ class MemeEditorView: UIViewController,UIImagePickerControllerDelegate,UINavigat
     //MARK: configure textfield
     func configure(_ textField: UITextField, with defaultText: String) {
         textField.text = defaultText
-          textField.textAlignment = NSTextAlignment.center
         textField.defaultTextAttributes = memeTextAttributes
+        textField.textAlignment = .center
+        textField.delegate = self     
     }
     // MARK: Move view functions
     @objc func keyboardWillShow(_ notification: Notification){

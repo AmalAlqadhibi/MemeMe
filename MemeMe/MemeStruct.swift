@@ -8,8 +8,8 @@
 import Foundation
 import UIKit
 struct Meme {
-    let topText:String
-    let bottomText:String
+    var topText:String
+    var bottomText:String
     var originalImage:UIImage
     var memedImage:UIImage
 }
