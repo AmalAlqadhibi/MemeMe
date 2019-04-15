@@ -266,7 +266,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="Y5b-Xm-p77">
-                                <rect key="frame" x="0.0" y="139" width="375" height="389"/>
+                                <rect key="frame" x="0.0" y="183" width="375" height="301"/>
                             </imageView>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -323,6 +323,7 @@
                     <navigationBar key="navigationBar" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" id="lig-Wy-Doe">
                         <rect key="frame" x="0.0" y="20" width="375" height="44"/>
                         <autoresizingMask key="autoresizingMask"/>
+                        <color key="tintColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <color key="barTintColor" red="0.0" green="0.87058823529999996" blue="0.84313725490000002" alpha="1" colorSpace="calibratedRGB"/>
                     </navigationBar>
                     <nil name="viewControllers"/>
@@ -361,6 +362,6 @@
         <image name="table" width="30" height="30"/>
     </resources>
     <inferredMetricsTieBreakers>
-        <segue reference="pwN-wf-OQZ"/>
+        <segue reference="0mz-34-SEh"/>
     </inferredMetricsTieBreakers>
 </document>
